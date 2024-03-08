@@ -18,6 +18,8 @@ x_scaler = joblib.load('LSTM_x_scaler.save')
 y_scaler = joblib.load('LSTM_y_scaler.save')
 
 def threaded(c, model, x_scaler):
+    greeting_message = "hello"
+    c.send(greeting_message.encode())
 
     while True:
         try:
@@ -83,6 +85,7 @@ def Main():
     print("Socket binded to port", port)
     s.listen(5)
     print("Socket is listening")
+
 
     while True:
         c, addr = s.accept()
