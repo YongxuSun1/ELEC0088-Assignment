@@ -27,8 +27,8 @@ else:
     row_number = df.index[df['Date'] == next_date].tolist()[0]
 
 # Choose the previous date's data to predict
-if row_number >= 5:
-    data_to_use = df_feature.iloc[(row_number - 5):row_number]
+if row_number >= step:
+    data_to_use = df_feature.iloc[(row_number - step):row_number]
 
 else:
     data_to_use = df_feature.iloc[:row_number]
