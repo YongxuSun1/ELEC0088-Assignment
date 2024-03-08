@@ -75,7 +75,7 @@ epochs = 50
 num_input = X.shape[1]
 model = Sequential()
 model.add(LSTM(units=64, activation='relu', input_shape=(time_steps, num_input)))
-model.add(Dense(1, activation='linear'))  # 输出层，预测E列的值
+model.add(Dense(1, activation='linear'))  #
 model . compile(loss="mse", optimizer=SGD())
 
 # Define the ModelCheckpoint
