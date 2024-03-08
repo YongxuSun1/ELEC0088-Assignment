@@ -18,7 +18,7 @@ x_scaler = joblib.load('LSTM_x_scaler.save')
 y_scaler = joblib.load('LSTM_y_scaler.save')
 
 def threaded(c, model, x_scaler):
-    greeting_message = "hello"
+    greeting_message = "hello, this is oracle robot, how can I help today"
     c.send(greeting_message.encode())
 
     while True:
