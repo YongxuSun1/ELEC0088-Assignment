@@ -5,13 +5,19 @@ import pandas as pd
 # load the model and dataset
 x_scaler = joblib.load('LSTM_x_scaler.save')
 y_scaler = joblib.load('LSTM_y_scaler.save')
-model = load_model('LSTM_best_model.h5')
+model = load_model('LSTM_best_model.keras')
 df = pd.read_csv('merged_data.csv')
-df_feature = df.drop(['mean_temp', 'Date'], axis=1)
+
+
+df['Date'] = pd.to_datetime(df['Date'])
+df['Year'] = df['Date'].dt.year
+df['Month'] = df['Date'].dt.month
+df['Day'] = df['Date'].dt.day
+# df = df.drop('Date', axis=1)
+
+df_feature = df.drop(['mean_temp'], axis=1)
 step = 5  # Day step
 
-# Preprocess the dataset
-df['Date'] = pd.to_datetime(df['Date'])
 
 # Type the date
 receive_date = input('Type the date')
@@ -35,7 +41,7 @@ else:
     step = row_number
 
 # standardized the data
-data_to_use = x_scaler.transform(data_to_use)
+data_to_use = x_scaler.transform(data_to_use.drop('Date', axis=1))
 
 # Reshape the data
 data_to_use_reshaped = data_to_use.reshape(1, step, -1)
@@ -43,4 +49,3 @@ data_to_use_reshaped = data_to_use.reshape(1, step, -1)
 predicted_weather = model . predict(data_to_use_reshaped)
 predicted_weather = y_scaler.inverse_transform(predicted_weather)
 print(predicted_weather)
-
