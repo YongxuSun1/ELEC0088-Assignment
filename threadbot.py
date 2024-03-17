@@ -9,16 +9,54 @@ import numpy as np
 
 # Load data and preprocessing
 df = pd.read_csv('merged_data.csv')
-df_feature = df.drop(['mean_temp', 'Date'], axis=1)
 df['Date'] = pd.to_datetime(df['Date'])
-step = 5
-# Load the model and scaler outside of the threaded function
-model = load_model('myModel.h5')
-x_scaler = joblib.load('LSTM_x_scaler.save')
-y_scaler = joblib.load('LSTM_y_scaler.save')
+df['Year'] = df['Date'].dt.year
+df['Month'] = df['Date'].dt.month
+df['Day'] = df['Date'].dt.day
+df_feature = df.drop(['mean_temp', 'Date'], axis=1)
 
-def threaded(c, model, x_scaler):
-    greeting_message = "hello, this is oracle robot, how can I help today"
+step = 5
+# Load the model and scaler
+model = load_model('GRU_best_model.keras')
+x_scaler = joblib.load('GRU_x_scaler.save')
+y_scaler = joblib.load('GRU_y_scaler.save')
+
+
+def Predict(date_input):
+    global x_scaler, y_scaler, step, df, df_feature
+    receive_date_dt = pd.to_datetime(date_input)
+    print(receive_date_dt)
+    row_number = None
+
+    # Find the date location
+    if receive_date_dt in df['Date'].values:
+        row_number = df.index[df['Date'] == receive_date_dt].tolist()[0]
+    else:
+        # If not in the dataset, then find the closest day
+        closest_date = df.iloc[(df['Date'] - receive_date_dt).abs().argsort()[:1]]
+        row_number = closest_date.index[0]
+
+    # Choose the previous date's data to predict
+    if row_number >= step:
+        data_to_use = df_feature.iloc[(row_number - step):row_number]
+    else:
+        data_to_use = df_feature.iloc[:row_number]
+        step = row_number  # Adjust step based on available data
+
+    # Standardize the data
+    data_to_use_scaled = x_scaler.transform(data_to_use)
+
+    # Reshape the data
+    data_to_use_reshaped = data_to_use_scaled.reshape(1, step, -1)
+
+    # Predict the data
+    predicted_weather = model.predict(data_to_use_reshaped)
+    predictions = y_scaler.inverse_transform(predicted_weather)
+    return predictions
+
+
+def threaded(c):
+    greeting_message = "Hello, this is oracle robot, how can I help today?"
     c.send(greeting_message.encode())
 
     while True:
@@ -30,40 +68,17 @@ def threaded(c, model, x_scaler):
 
             user_input = data.decode().lower()
 
-            if "average" in user_input:
-                response = "Please enter the date (e.g. 2002 5 29):"
+            if "what is the average temperature" in user_input:
+                response = "Please enter the date (e.g. 2002-05-29):"
                 c.send(response.encode())
                 data = c.recv(1024)
                 date_input = data.decode()
 
                 try:
-                    date_formatted = pd.to_datetime(date_input)
-
-                    # Check if the date is in the dataset or find the closest date before the input date
-                    if date_formatted in df['Date'].values:
-                        row_number = df.index[df['Date'] == date_formatted][0]
-                    else:
-                        closest_dates = df[df['Date'] < date_formatted]
-                        row_number = closest_dates.index[-1]
-
-                    # Ensure we have enough data to create a sequence
-                    start_index = max(row_number - step + 1, 0)
-                    data_to_use = df_feature.iloc[start_index:row_number + 1]
-
-                    # Pad the sequence if necessary
-                    if len(data_to_use) < step:
-                        padding = np.zeros((step - len(data_to_use), data_to_use.shape[1]))
-                        data_to_use = np.vstack([padding, x_scaler.transform(data_to_use)])
-
-                    else:
-                        data_to_use = x_scaler.transform(data_to_use)
-
-                    data_to_use = np.expand_dims(data_to_use, axis=0)  # Reshape for the model if necessary
-
-                    predictions = model.predict(data_to_use)
-                    predictions = y_scaler.inverse_transform(predictions)
-                    response = f"Predicted average temperature for {date_input}: {predictions[0][0]}"
-                except ValueError:
+                    predictions = Predict(date_input)
+                    response = f"Predicted average temperature for {date_input}: {predictions[0][0]:.2f}"
+                except Exception as e:
+                    print(e)
                     response = "Error in processing date. Please make sure it is in YYYY-MM-DD format."
 
                 c.send(response.encode())
@@ -77,6 +92,7 @@ def threaded(c, model, x_scaler):
 
     c.close()
 
+
 def Main():
     host = ""
     port = 65432
@@ -86,13 +102,13 @@ def Main():
     s.listen(5)
     print("Socket is listening")
 
-
     while True:
         c, addr = s.accept()
         print('Connected to:', addr[0], ':', addr[1])
-        start_new_thread(threaded, (c, model, x_scaler))
+        start_new_thread(threaded, (c,))
 
     s.close()
+
 
 if __name__ == '__main__':
     Main()
