@@ -1,16 +1,19 @@
 import pandas as pd
 import numpy as np
-import seaborn as sns
+import tensorflow as tf
 import matplotlib.pyplot as plt
-import keras
 from keras.callbacks import ModelCheckpoint
 from keras . models import Sequential
-from keras . layers import Dense, LSTM
-from keras . optimizers import SGD
+from keras . layers import Dense, LSTM, Dropout
 from sklearn . preprocessing import StandardScaler
-from sklearn . model_selection import train_test_split
 import joblib
-from keras.models import load_model
+import os
+import random
+
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+random.seed(42)
+np.random.seed(42)
+tf.random.set_seed(42)
 
 # Read the merged dataset (Weather + Stock)
 df = pd.read_csv('merged_data.csv')
@@ -23,21 +26,10 @@ df['Month'] = df['Date'].dt.month
 df['Day'] = df['Date'].dt.day
 df = df.drop('Date', axis=1)
 
-
-
-"""
-# Create the correlation Heatmap
-correlation = df.corr()
-plt.figure(figsize=(12, 10))
-sns.heatmap(correlation, annot=True, cmap='coolwarm', fmt=".2f", linewidths=.5)
-plt.title("Correlation Heatmap")
-plt.show()
-"""
-
 # Features and label
 
 y = df.loc[:, 'mean_temp']
-X = df.drop(['mean_temp','Year','Month','Day'], axis=1)
+X = df.drop(['mean_temp'], axis=1)
 y = y.to_numpy()
 X = X.to_numpy()
 
@@ -50,10 +42,9 @@ joblib.dump(scaler_X, 'LSTM_x_scaler.save')
 joblib.dump(scaler_y, 'LSTM_y_scaler.save')
 
 # define the batch size and the number of epochs
-batch_size = 32
+batch_size =32
 epochs = 50
-time_steps = 5
-
+time_steps = 1
 
 # Reshape the data
 
@@ -72,18 +63,20 @@ x_train = X_reshaped[:-test_size]
 x_test = X_reshaped[-test_size:]
 y_train = y_reshaped[:-test_size]
 y_test = y_reshaped[-test_size:]
-
-# x_train, x_test, y_train, y_test = train_test_split(X_reshaped, y_reshaped, test_size=0.1)
-# Reshape y_train and y_test
+print(x_train.shape,X_reshaped.shape)
 y_train = y_train . reshape((-1, 1))
 y_test = y_test . reshape((-1, 1))
 
 # Create the model
 num_input = X.shape[1]
 model = Sequential()
-model.add(LSTM(units=64, activation='relu', input_shape=(time_steps, num_input)))
+model.add(LSTM(units=64, activation='relu', input_shape=(time_steps, num_input),return_sequences=False))
+#model.add(Dropout(0.2))
+#model.add(LSTM(64, activation='relu', return_sequences=False))
+model.add(Dropout(0.1))
 model.add(Dense(1, activation='linear'))  #
-model . compile(loss="mse", optimizer=SGD())
+
+model . compile(loss="mse", optimizer='sgd',)
 
 # Define the ModelCheckpoint
 checkpoint = ModelCheckpoint('LSTM_best_model.keras',
@@ -112,6 +105,7 @@ plt.show()
 
 # Evaluation
 mse = model . evaluate(x_test, y_test, verbose=0)
+
 # model = load_model('LSTM_best_model.h5')
 predictions = model.predict(x_test)
 predictions = scaler_y.inverse_transform(predictions)
