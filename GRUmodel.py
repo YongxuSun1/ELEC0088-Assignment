@@ -1,15 +1,18 @@
 import pandas as pd
 import numpy as np
-import seaborn as sns
+import tensorflow as tf
 import matplotlib.pyplot as plt
-import keras
+import random
 from keras.callbacks import ModelCheckpoint
 from keras . models import Sequential
 from keras . layers import Dense, GRU
 from keras . optimizers import SGD
 from sklearn . preprocessing import StandardScaler
-from sklearn . model_selection import train_test_split
-import joblib
+
+
+random.seed(42)
+np.random.seed(42)
+tf.random.set_seed(42)
 
 
 # Read the merged dataset (Weather + Stock)
@@ -38,7 +41,7 @@ def create_sequences(features, labels, time_steps):
     return np.array(X), np.array(y)
 
 
-time_steps = 50
+time_steps = 5
 batch_size = 32
 epochs = 50
 
@@ -50,7 +53,7 @@ y = y.reshape(-1,1)
 y_scaler = StandardScaler()
 y = y_scaler.fit_transform(y)
 
-
+print(max(y),min(y))
 # Split the dataset
 
 test_size = int(len(X) * 0.1)  # Split size is 0.1
@@ -112,3 +115,4 @@ plt.xlabel('Sample index')
 plt.ylabel('Value')
 plt.legend()
 plt.show()
+
