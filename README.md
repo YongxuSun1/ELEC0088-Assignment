@@ -1,2 +1,1 @@
-# Tele-3-heros
-SNS final assignment
+# SNS final assignment
